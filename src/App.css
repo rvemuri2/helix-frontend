@@ -1,0 +1,109 @@
+:root {
+  --bg-color: #1e1e1e; /* dark background */
+  --text-color: #ffffff; /* white text */
+  --accent-color: #ff69b4; /* hot pink */
+  --chat-bubble-bg: #2a2a2a; /* slightly lighter dark for chat bubble background */
+  --chat-bubble-text: #f4f4f4;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  font-family: sans-serif;
+  height: 100%;
+  width: 100%;
+}
+
+#root {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-container {
+  display: flex;
+  height: 100%;
+}
+
+.chat-panel {
+  width: 50vh; /* was 30% */
+  border-right: 2px solid var(--accent-color);
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+  background-color: var(--bg-color);
+}
+
+.workspace-panel {
+  width: 90%;
+  padding: 1rem;
+  background-color: var(--bg-color);
+}
+
+.chat-box {
+  flex: 1;
+  overflow-y: auto;
+  margin-bottom: 1rem;
+  background-color: var(--bg-color);
+  padding-right: 0.5rem;
+}
+
+.chat-bubble {
+  background-color: var(--chat-bubble-bg);
+  color: var(--chat-bubble-text);
+  padding: 0.75rem;
+  margin: 0.5rem 0;
+  border-radius: 8px;
+  max-width: 60%;
+  word-wrap: break-word;
+}
+
+.user-bubble {
+  align-self: flex-end;
+  background-color: var(--accent-color);
+  color: #000;
+}
+
+.system-bubble {
+  align-self: flex-start;
+}
+
+.send-bar {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.send-input {
+  flex: 1;
+  padding: 0.5rem;
+  background-color: #333;
+  color: #fff;
+  border: 1px solid var(--accent-color);
+}
+
+.send-button {
+  background-color: var(--accent-color);
+  color: #000;
+  border: none;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font-weight: bold; /* Make it stand out more */
+}
+
+.sequence-title {
+  color: var(--accent-color);
+  margin-bottom: 1rem;
+  font-weight: bold;
+}
+
+.sequence-content {
+  background-color: #2a2a2a;
+  border-radius: 8px;
+  padding: 2rem;
+  min-height: 80vh;
+  overflow-y: auto;
+  width: 80vh;
+}
