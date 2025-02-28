@@ -1,5 +1,18 @@
 import React, { useState } from "react";
+import {
+  ClerkProvider,
+  SignedIn,
+  SignedOut,
+  UserButton,
+  SignInButton,
+} from "@clerk/clerk-react";
 import "./App.css";
+
+const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+
+if (!clerkPubKey) {
+  throw new Error("Missing Clerk publishable key.");
+}
 
 interface IMessage {
   text: string;
@@ -59,58 +72,72 @@ function App() {
   };
 
   return (
-    <div className="chat-container">
-      <div className="chat-panel">
-        <div className="chat-box">
-          {messages.map((msg, idx) => (
-            <div
-              key={idx}
-              className={`chat-bubble ${
-                msg.sender === "user" ? "user-bubble" : "system-bubble"
-              }`}
-            >
-              {msg.text}
-            </div>
-          ))}
+    <ClerkProvider publishableKey={clerkPubKey}>
+      <header className="header">
+        <div></div>
+        <h1 className="header-title">Helix Chat</h1>
+        <div className="auth-container">
+          <SignedIn>
+            <UserButton afterSignOutUrl="/" />
+          </SignedIn>
+          <SignedOut>
+            <SignInButton />
+          </SignedOut>
         </div>
-        <div className="send-bar">
-          <input
-            className="send-input"
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Type your message..."
-          />
-          <button className="send-button" onClick={handleSend}>
-            Send
-          </button>
-        </div>
-      </div>
+      </header>
 
-      <div className="workspace-panel">
-        <div className="sequence-title">Sequence</div>
-        {steps.length === 0 ? (
-          <div className="sequence-content">No sequence generated.</div>
-        ) : (
-          <div className="sequence-content">
-            {steps.map((step) => (
-              <div key={step.stepNumber} style={{ marginBottom: "1rem" }}>
-                <input
-                  style={{ width: "100%", marginBottom: "0.5rem" }}
-                  value={step.stepTitle}
-                  readOnly
-                />
-                <textarea
-                  style={{ width: "100%", height: "5rem" }}
-                  value={step.stepContent}
-                  readOnly
-                />
+      <div className="chat-container">
+        <div className="chat-panel">
+          <div className="chat-box">
+            {messages.map((msg, idx) => (
+              <div
+                key={idx}
+                className={`chat-bubble ${
+                  msg.sender === "user" ? "user-bubble" : "system-bubble"
+                }`}
+              >
+                {msg.text}
               </div>
             ))}
           </div>
-        )}
+          <div className="send-bar">
+            <input
+              className="send-input"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Type your message..."
+            />
+            <button className="send-button" onClick={handleSend}>
+              Send
+            </button>
+          </div>
+        </div>
+        <div className="workspace-panel">
+          <div className="sequence-title">Sequence</div>
+          {steps.length === 0 ? (
+            <div className="sequence-content">No sequence generated.</div>
+          ) : (
+            <div className="sequence-content">
+              {steps.map((step) => (
+                <div key={step.stepNumber} style={{ marginBottom: "1rem" }}>
+                  <input
+                    style={{ width: "100%", marginBottom: "0.5rem" }}
+                    value={step.stepTitle}
+                    readOnly
+                  />
+                  <textarea
+                    style={{ width: "100%", height: "5rem" }}
+                    value={step.stepContent}
+                    readOnly
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </ClerkProvider>
   );
 }
 
