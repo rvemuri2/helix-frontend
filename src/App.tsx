@@ -44,6 +44,24 @@ function ChatApp() {
     null
   );
   const [isSaving, setIsSaving] = useState(false);
+  const [tempMessage, setTempMessage] = useState("");
+
+  const classify_intent = (user_input: string): Promise<string> => {
+    if (/add/i.test(user_input) && /step/i.test(user_input)) {
+      return Promise.resolve("add_step");
+    } else if (/edit/i.test(user_input) || /change/i.test(user_input)) {
+      return Promise.resolve("edit_step");
+    } else {
+      return Promise.resolve("new_sequence");
+    }
+  };
+
+  const getLoadingMessage = (intent: string): string => {
+    if (intent === "add_step") return "Adding step...";
+    else if (intent === "edit_step") return "Editing step...";
+    else if (intent === "new_sequence") return "Generating sequence...";
+    return "Generating sequence...";
+  };
 
   useEffect(() => {
     if (user) {
@@ -71,7 +89,6 @@ function ChatApp() {
     }
   }, [user]);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const debouncedSaveStep = useCallback(
     debounce(
       async (
@@ -122,7 +139,16 @@ function ChatApp() {
       console.error("User not logged in");
       return;
     }
+
     setMessages((prev) => [...prev, { text: inputValue, sender: "user" }]);
+
+    setInputValue("");
+
+    const intent = await classify_intent(inputValue);
+    if (intent !== "edit_step") {
+      setTempMessage(getLoadingMessage(intent));
+    }
+
     try {
       const response = await fetch("http://127.0.0.1:5000/api/chat", {
         method: "POST",
@@ -130,7 +156,13 @@ function ChatApp() {
         body: JSON.stringify({ message: inputValue, user_id: user.id }),
       });
       const data = await response.json();
-      setMessages((prev) => [...prev, { text: data.reply, sender: "ai" }]);
+      setTempMessage("");
+
+      if (data.intent && data.intent === "clarification") {
+        setMessages((prev) => [...prev, { text: data.reply, sender: "ai" }]);
+      } else {
+        setMessages((prev) => [...prev, { text: data.reply, sender: "ai" }]);
+      }
       if (data.sequence.length > 0) {
         setSteps(data.sequence);
         setCurrentSequenceId(data.sequenceId);
@@ -144,21 +176,17 @@ function ChatApp() {
         ...prev,
         { text: "Oops, something went wrong.", sender: "ai" },
       ]);
+      setTempMessage("");
     }
-    setInputValue("");
   };
 
   const handleDeleteHistory = async () => {
     if (!user) return;
     try {
-      // Delete history on the backend.
       await fetch(
         `http://127.0.0.1:5000/api/delete_history?user_id=${user.id}`,
-        {
-          method: "DELETE",
-        }
+        { method: "DELETE" }
       );
-
       setMessages([]);
       setSteps([]);
       setCurrentSequenceId(null);
@@ -197,6 +225,7 @@ function ChatApp() {
       >
         Delete History
       </button>
+
       <div className="chat-container">
         <div className="chat-panel">
           <div className="chat-box">
@@ -210,6 +239,12 @@ function ChatApp() {
                 {msg.text}
               </div>
             ))}
+            {tempMessage && (
+              <div className="chat-bubble system-bubble loading-bubble">
+                {tempMessage}
+                <span className="loading-dots"></span>
+              </div>
+            )}
           </div>
           <div className="send-bar">
             <input
