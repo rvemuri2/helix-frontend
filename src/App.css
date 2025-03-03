@@ -46,28 +46,6 @@ body {
   width: 100%;
 }
 
-.delete-button {
-  background-color: #d9534f;
-  color: #fff;
-  border: none;
-  border-radius: 12px;
-  padding: 0.6rem;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: background-color 0.2s, transform 0.2s;
-  margin-right: 5rem;
-}
-
-.delete-button:hover {
-  background-color: #c9302c;
-  transform: scale(1.05);
-}
-
-.delete-button:active {
-  background-color: #ac2925;
-  transform: scale(0.95);
-}
-
 .chat-container {
   display: flex;
   flex: 1;

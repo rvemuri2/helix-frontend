@@ -179,27 +179,6 @@ function ChatApp() {
     }
   };
 
-  const handleDeleteHistory = async () => {
-    if (!user) return;
-    try {
-      const res = await fetch(
-        `http://127.0.0.1:5000/api/delete_history?user_id=${user.id}`,
-        {
-          method: "DELETE",
-        }
-      );
-      const data = await res.json();
-      setMessages([
-        { text: data.default.message, sender: data.default.sender },
-      ]);
-      setSteps([]);
-      setCurrentSequenceId(null);
-    } catch (error) {
-      console.error("Error deleting history:", error);
-      alert("Error deleting history.");
-    }
-  };
-
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       e.preventDefault();
@@ -213,9 +192,6 @@ function ChatApp() {
         <div></div>
         <h1 className="header-title">Helix Chat</h1>
         <div className="auth-container">
-          <button className="delete-button" onClick={handleDeleteHistory}>
-            Delete History
-          </button>
           <SignedIn>
             <UserButton afterSignOutUrl="/" />
           </SignedIn>
