@@ -6,3 +6,12 @@
 4. Go to the localhost link provided in the terminal
 5. Have fun! Sign in first and use the app!
 
+If for some reason you do not have npm or homebrew or both installed. Then follow this first. 
+
+- Copy and paste this into terminal: /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" and hit enter
+
+- enter your password and once it finishes downloading, it will give you some additional instructions for setting up homebrew. 
+
+- once homebrew is installed, run brew install node
+
+- now you can follow the setup instructions starting from run npm install
