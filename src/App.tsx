@@ -1,13 +1,17 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ClerkProvider,
+  useUser,
   SignedIn,
   SignedOut,
   UserButton,
   SignInButton,
-  useUser,
 } from "@clerk/clerk-react";
+
 import "./App.css";
+import { ChatPanel } from "./components/ChatPanel";
+import { WorkspacePanel } from "./components/WorkspacePanel";
+import { loadUserHistory } from "./services/chatService";
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 if (!clerkPubKey) {
@@ -25,55 +29,22 @@ interface IStep {
   stepContent: string;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function debounce<F extends (...args: any[]) => void>(func: F, wait: number) {
-  let timeout: ReturnType<typeof setTimeout>;
-  return function executedFunction(...args: Parameters<F>) {
-    clearTimeout(timeout);
-    timeout = setTimeout(() => func(...args), wait);
-  };
-}
+function MainApp() {
+  const { user, isLoaded } = useUser();
 
-function ChatApp() {
-  const { user } = useUser();
   const [messages, setMessages] = useState<IMessage[]>([
     { text: "How can I help?", sender: "ai" },
   ]);
-  const [inputValue, setInputValue] = useState("");
   const [steps, setSteps] = useState<IStep[]>([]);
   const [currentSequenceId, setCurrentSequenceId] = useState<string | null>(
     null
   );
-  const [isSaving, setIsSaving] = useState(false);
-  const [tempMessage, setTempMessage] = useState("");
-
-  const classify_intent = async (user_input: string): Promise<string> => {
-    try {
-      const res = await fetch("http://127.0.0.1:5000/api/classify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: user_input }),
-      });
-      const data = await res.json();
-      return data.intent || "new_sequence";
-    } catch (error) {
-      console.error("Classification error:", error);
-      return "new_sequence";
-    }
-  };
-
-  const getLoadingMessage = (intent: string): string => {
-    if (intent === "add_step") return "Adding step...";
-    else if (intent === "edit_step") return "Editing step...";
-    else if (intent === "new_sequence") return "Generating sequence...";
-    return "Generating sequence...";
-  };
 
   useEffect(() => {
-    if (user) {
-      fetch(`http://127.0.0.1:5000/api/load?user_id=${user.id}`)
-        .then((res) => res.json())
-        .then((data) => {
+    const loadHistory = async () => {
+      if (user && user.id) {
+        try {
+          const data = await loadUserHistory(user.id);
           if (data.chat_history) {
             setMessages(
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -88,103 +59,17 @@ function ChatApp() {
             setSteps(firstSequence.steps);
             setCurrentSequenceId(firstSequence.sequence_id);
           }
-        })
-        .catch((err) => {
-          console.error("Error loading history", err);
-        });
-    }
+        } catch (err) {
+          console.error("Error loading history:", err);
+        }
+      }
+    };
+    loadHistory();
   }, [user]);
 
-  const debouncedSaveStep = useCallback(
-    debounce(
-      async (
-        stepNumber: number,
-        field: "stepTitle" | "stepContent",
-        value: string
-      ) => {
-        if (!currentSequenceId) return;
-        setIsSaving(true);
-        try {
-          await fetch("http://127.0.0.1:5000/api/sequence/update", {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              sequenceId: currentSequenceId,
-              stepNumber,
-              field,
-              value,
-            }),
-          });
-        } catch (error) {
-          console.error("Error saving step:", error);
-        } finally {
-          setIsSaving(false);
-        }
-      },
-      1000
-    ),
-    [currentSequenceId]
-  );
-
-  const handleStepEdit = (
-    stepNumber: number,
-    field: "stepTitle" | "stepContent",
-    value: string
-  ) => {
-    setSteps((prev) =>
-      prev.map((step) =>
-        step.stepNumber === stepNumber ? { ...step, [field]: value } : step
-      )
-    );
-    debouncedSaveStep(stepNumber, field, value);
-  };
-
-  const handleSend = async () => {
-    if (!inputValue.trim()) return;
-    if (!user) {
-      console.error("User not logged in");
-      return;
-    }
-
-    const messageToSend = inputValue;
-    setInputValue("");
-    setMessages((prev) => [...prev, { text: messageToSend, sender: "user" }]);
-
-    const intent = await classify_intent(messageToSend);
-    setTempMessage(getLoadingMessage(intent));
-
-    try {
-      const response = await fetch("http://127.0.0.1:5000/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: messageToSend, user_id: user.id }),
-      });
-      const data = await response.json();
-      setTempMessage("");
-      setMessages((prev) => [...prev, { text: data.reply, sender: "ai" }]);
-      if (data.sequence.length > 0) {
-        setSteps(data.sequence);
-        setCurrentSequenceId(data.sequenceId);
-      } else {
-        setSteps([]);
-        setCurrentSequenceId(null);
-      }
-    } catch (error) {
-      console.error("Error sending message:", error);
-      setMessages((prev) => [
-        ...prev,
-        { text: "Oops, something went wrong.", sender: "ai" },
-      ]);
-      setTempMessage("");
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      handleSend();
-    }
-  };
+  if (!isLoaded) {
+    return <div>Loading user state...</div>;
+  }
 
   return (
     <>
@@ -202,86 +87,28 @@ function ChatApp() {
       </header>
 
       <div className="chat-container">
-        <div className="chat-panel">
-          <div className="chat-box">
-            {messages.map((msg, idx) => (
-              <div
-                key={idx}
-                className={`chat-bubble ${
-                  msg.sender === "user" ? "user-bubble" : "system-bubble"
-                }`}
-              >
-                {msg.text}
-              </div>
-            ))}
-            {tempMessage && (
-              <div className="chat-bubble system-bubble loading-bubble">
-                {tempMessage}
-                <span className="loading-dots"></span>
-              </div>
-            )}
-          </div>
-          <div className="send-bar">
-            <input
-              className="send-input"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Type your message..."
-            />
-            <button className="send-button" onClick={handleSend}>
-              Send
-            </button>
-          </div>
-        </div>
-        <div className="workspace-panel">
-          <div className="sequence-title">
-            Sequence {isSaving && "(Saving...)"}
-          </div>
-          {steps.length === 0 ? (
-            <div className="sequence-content">No sequence generated.</div>
-          ) : (
-            <div className="sequence-content">
-              {steps.map((step) => (
-                <div key={step.stepNumber} style={{ marginBottom: "1rem" }}>
-                  <input
-                    style={{ width: "100%", marginBottom: "0.5rem" }}
-                    value={step.stepTitle}
-                    onChange={(e) =>
-                      handleStepEdit(
-                        step.stepNumber,
-                        "stepTitle",
-                        e.target.value
-                      )
-                    }
-                  />
-                  <textarea
-                    style={{ width: "100%", height: "5rem" }}
-                    value={step.stepContent}
-                    onChange={(e) =>
-                      handleStepEdit(
-                        step.stepNumber,
-                        "stepContent",
-                        e.target.value
-                      )
-                    }
-                  />
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        <ChatPanel
+          userId={user?.id ?? ""}
+          messages={messages}
+          setMessages={setMessages}
+          setSteps={setSteps}
+          setCurrentSequenceId={setCurrentSequenceId}
+        />
+        <WorkspacePanel
+          userId={user?.id ?? ""}
+          currentSequenceId={currentSequenceId}
+          steps={steps}
+          setSteps={setSteps}
+        />
       </div>
     </>
   );
 }
 
-function App() {
+export default function App() {
   return (
     <ClerkProvider publishableKey={clerkPubKey}>
-      <ChatApp />
+      <MainApp />
     </ClerkProvider>
   );
 }
-
-export default App;
