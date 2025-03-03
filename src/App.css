@@ -46,6 +46,28 @@ body {
   width: 100%;
 }
 
+.delete-button {
+  background-color: #d9534f;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 0.6rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.2s;
+  margin-right: 5rem;
+}
+
+.delete-button:hover {
+  background-color: #c9302c;
+  transform: scale(1.05);
+}
+
+.delete-button:active {
+  background-color: #ac2925;
+  transform: scale(0.95);
+}
+
 .chat-container {
   display: flex;
   flex: 1;
@@ -182,7 +204,6 @@ body {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
 }
 
-/* Fade In/Out Animation for Loading Message */
 @keyframes fadeInOut {
   0% {
     opacity: 0;
@@ -199,7 +220,6 @@ body {
   animation: fadeInOut 1.5s infinite;
 }
 
-/* Basic fadeIn for other elements */
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -211,7 +231,6 @@ body {
   }
 }
 
-/* Responsive Styles */
 @media (max-width: 768px) {
   .chat-container {
     flex-direction: column;

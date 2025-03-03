@@ -25,7 +25,8 @@ interface IStep {
   stepContent: string;
 }
 
-function debounce<F extends (...args: never[]) => void>(func: F, wait: number) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function debounce<F extends (...args: any[]) => void>(func: F, wait: number) {
   let timeout: ReturnType<typeof setTimeout>;
   return function executedFunction(...args: Parameters<F>) {
     clearTimeout(timeout);
@@ -46,13 +47,18 @@ function ChatApp() {
   const [isSaving, setIsSaving] = useState(false);
   const [tempMessage, setTempMessage] = useState("");
 
-  const classify_intent = (user_input: string): Promise<string> => {
-    if (/add/i.test(user_input) && /step/i.test(user_input)) {
-      return Promise.resolve("add_step");
-    } else if (/edit/i.test(user_input) || /change/i.test(user_input)) {
-      return Promise.resolve("edit_step");
-    } else {
-      return Promise.resolve("new_sequence");
+  const classify_intent = async (user_input: string): Promise<string> => {
+    try {
+      const res = await fetch("http://127.0.0.1:5000/api/classify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: user_input }),
+      });
+      const data = await res.json();
+      return data.intent || "new_sequence";
+    } catch (error) {
+      console.error("Classification error:", error);
+      return "new_sequence";
     }
   };
 
@@ -140,29 +146,22 @@ function ChatApp() {
       return;
     }
 
-    setMessages((prev) => [...prev, { text: inputValue, sender: "user" }]);
-
+    const messageToSend = inputValue;
     setInputValue("");
+    setMessages((prev) => [...prev, { text: messageToSend, sender: "user" }]);
 
-    const intent = await classify_intent(inputValue);
-    if (intent !== "edit_step") {
-      setTempMessage(getLoadingMessage(intent));
-    }
+    const intent = await classify_intent(messageToSend);
+    setTempMessage(getLoadingMessage(intent));
 
     try {
       const response = await fetch("http://127.0.0.1:5000/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: inputValue, user_id: user.id }),
+        body: JSON.stringify({ message: messageToSend, user_id: user.id }),
       });
       const data = await response.json();
       setTempMessage("");
-
-      if (data.intent && data.intent === "clarification") {
-        setMessages((prev) => [...prev, { text: data.reply, sender: "ai" }]);
-      } else {
-        setMessages((prev) => [...prev, { text: data.reply, sender: "ai" }]);
-      }
+      setMessages((prev) => [...prev, { text: data.reply, sender: "ai" }]);
       if (data.sequence.length > 0) {
         setSteps(data.sequence);
         setCurrentSequenceId(data.sequenceId);
@@ -183,14 +182,18 @@ function ChatApp() {
   const handleDeleteHistory = async () => {
     if (!user) return;
     try {
-      await fetch(
+      const res = await fetch(
         `http://127.0.0.1:5000/api/delete_history?user_id=${user.id}`,
-        { method: "DELETE" }
+        {
+          method: "DELETE",
+        }
       );
-      setMessages([]);
+      const data = await res.json();
+      setMessages([
+        { text: data.default.message, sender: data.default.sender },
+      ]);
       setSteps([]);
       setCurrentSequenceId(null);
-      alert("History deleted successfully.");
     } catch (error) {
       console.error("Error deleting history:", error);
       alert("Error deleting history.");
@@ -210,6 +213,9 @@ function ChatApp() {
         <div></div>
         <h1 className="header-title">Helix Chat</h1>
         <div className="auth-container">
+          <button className="delete-button" onClick={handleDeleteHistory}>
+            Delete History
+          </button>
           <SignedIn>
             <UserButton afterSignOutUrl="/" />
           </SignedIn>
@@ -218,13 +224,6 @@ function ChatApp() {
           </SignedOut>
         </div>
       </header>
-
-      <button
-        onClick={handleDeleteHistory}
-        style={{ margin: "1rem", padding: "0.5rem" }}
-      >
-        Delete History
-      </button>
 
       <div className="chat-container">
         <div className="chat-panel">
